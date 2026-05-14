@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transcritor de Vídeos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.6.0/dist/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #1D9E75;
+      --green-dark: #0F6E56;
+      --green-light: #E1F5EE;
+      --bg: #F7F7F5;
+      --surface: #FFFFFF;
+      --border: rgba(0,0,0,0.10);
+      --border-strong: rgba(0,0,0,0.18);
+      --text: #1a1a1a;
+      --text-muted: #666;
+      --text-faint: #999;
+      --radius: 10px;
+      --radius-lg: 14px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 0.5px solid var(--border);
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar .logo {
+      width: 32px; height: 32px;
+      background: var(--green);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .topbar .logo i { font-size: 18px; color: white; }
+    .topbar h1 { font-size: 16px; font-weight: 600; }
+    .topbar .version { font-size: 11px; background: var(--green-light); color: var(--green-dark); padding: 2px 8px; border-radius: 20px; margin-left: 4px; }
+
+    .container { max-width: 780px; margin: 0 auto; padding: 2rem 1rem; }
+
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .card-title {
+      font-size: 14px; font-weight: 600; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 1rem;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 1.5px dashed var(--border-strong);
+      border-radius: var(--radius-lg);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      background: var(--bg);
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--green);
+      background: var(--green-light);
+    }
+    .drop-zone i.big { font-size: 40px; color: var(--text-faint); display: block; margin-bottom: 0.75rem; }
+    .drop-zone .main-text { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 4px; }
+    .drop-zone .sub-text { font-size: 13px; color: var(--text-muted); }
+    .drop-zone .formats { font-size: 12px; color: var(--text-faint); margin-top: 8px; }
+    #fileInput { display: none; }
+
+    /* Controls */
+    .controls-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 600px) {
+      .controls-row { grid-template-columns: 1fr 1fr; }
+    }
+    .field label { font-size: 12px; font-weight: 500; color: var(--text-muted); display: block; margin-bottom: 5px; }
+    .field select, .field input {
+      width: 100%;
+      padding: 8px 10px;
+      font-size: 14px;
+      border: 0.5px solid var(--border-strong);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      font-family: inherit;
+      appearance: none;
+    }
+    .field select:focus, .field input:focus {
+      outline: none;
+      border-color: var(--green);
+    }
+
+    .checkboxes { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    .checkboxes label {
+      font-size: 13px; color: var(--text-muted);
+      display: flex; align-items: center; gap: 6px; cursor: pointer;
+    }
+    .checkboxes input[type=checkbox] { accent-color: var(--green); width: 15px; height: 15px; }
+
+    /* File list */
+    .file-list-header {
+      display: grid;
+      grid-template-columns: 1fr 80px 130px 36px;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .file-row {
+      display: grid;
+      grid-template-columns: 1fr 80px 130px 36px;
+      padding: 10px 12px;
+      align-items: center;
+      font-size: 13px;
+      border-bottom: 0.5px solid var(--border);
+      transition: background 0.1s;
+    }
+    .file-row:last-child { border-bottom: none; }
+    .file-row:hover { background: var(--bg); }
+    .file-name-cell { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+    .file-name-cell i { font-size: 18px; color: var(--text-faint); flex-shrink: 0; }
+    .file-name-cell span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-size-cell { font-size: 12px; color: var(--text-faint); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+    .badge-waiting   { background: #F1EFE8; color: #666; }
+    .badge-uploading { background: #E6F1FB; color: #185FA5; }
+    .badge-transcribing { background: var(--green-light); color: var(--green-dark); }
+    .badge-done      { background: #EAF3DE; color: #3B6D11; }
+    .badge-error     { background: #FCEBEB; color: #A32D2D; }
+
+    .pulse { animation: pulse 1.4s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    .btn-remove {
+      background: none; border: none; cursor: pointer;
+      padding: 4px; color: var(--text-faint); border-radius: 6px;
+      font-size: 18px; line-height: 1;
+    }
+    .btn-remove:hover { background: var(--bg); color: var(--text); }
+    .btn-remove:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .empty-state {
+      padding: 2.5rem; text-align: center;
+      color: var(--text-faint); font-size: 14px;
+    }
+    .empty-state i { font-size: 32px; display: block; margin-bottom: 8px; }
+
+    /* Progress */
+    .progress-wrap { margin-bottom: 1rem; }
+    .progress-info { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
+    .progress-track {
+      height: 6px;
+      background: var(--bg);
+      border: 0.5px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--green);
+      border-radius: 6px;
+      transition: width 0.4s ease;
+    }
+
+    /* Bottom bar */
+    .bottom-bar {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      flex-wrap: wrap;
+    }
+    .bottom-left { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .merge-check {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--text-muted); cursor: pointer;
+    }
+    .merge-check input { accent-color: var(--green); }
+
+    .btn-primary {
+      background: var(--green); color: white;
+      border: none; padding: 11px 28px;
+      border-radius: var(--radius); font-size: 15px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+      font-family: inherit; transition: background 0.15s, transform 0.1s;
+    }
+    .btn-primary:hover { background: var(--green-dark); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-primary:disabled {
+      background: var(--border-strong); color: var(--text-faint);
+      cursor: not-allowed; transform: none;
+    }
+    .btn-secondary {
+      background: none; color: var(--text-muted);
+      border: 0.5px solid var(--border-strong);
+      padding: 9px 16px; border-radius: var(--radius);
+      font-size: 13px; cursor: pointer; font-family: inherit;
+    }
+    .btn-secondary:hover { background: var(--bg); }
+
+    .server-url-hint {
+      font-size: 12px; color: var(--text-faint);
+      background: var(--bg); border: 0.5px solid var(--border);
+      border-radius: var(--radius); padding: 8px 12px;
+      margin-bottom: 1rem; display: flex; align-items: center; gap: 6px;
+    }
+    .server-url-hint i { font-size: 14px; }
+    .server-url-hint.connected { color: var(--green-dark); background: var(--green-light); border-color: var(--green); }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><i class="ti ti-microphone"></i></div>
+  <h1>Transcritor de Vídeos</h1>
+  <span class="version">Whisper small</span>
+</div>
+
+<div class="container">
+
+  <!-- Server config -->
+  <div class="card">
+    <div class="card-title">Servidor</div>
+    <div style="display:flex; gap:8px; align-items:flex-end;">
+      <div class="field" style="flex:1;">
+        <label>URL do backend (Render.com)</label>
+        <input type="text" id="serverUrl" placeholder="https://transcritor-backend.onrender.com" />
+      </div>
+      <button class="btn-secondary" onclick="checkServer()" style="height:36px; margin-bottom:1px;">
+        <i class="ti ti-plug" style="font-size:15px; vertical-align:-2px;"></i> Testar
+      </button>
+    </div>
+    <div class="server-url-hint" id="serverHint" style="margin-top:8px; margin-bottom:0;">
+      <i class="ti ti-info-circle"></i>
+      Cole a URL do seu Web Service no Render. Ex: https://meu-app.onrender.com
+    </div>
+  </div>
+
+  <!-- Drop zone -->
+  <div class="card">
+    <div class="card-title">Vídeos</div>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <i class="ti ti-cloud-upload big"></i>
+      <p class="main-text">Arraste vídeos ou uma pasta aqui</p>
+      <p class="sub-text">ou clique para selecionar arquivos</p>
+      <p class="formats">MP4 · MOV · MKV · AVI · WEBM</p>
+    </div>
+    <input type="file" id="fileInput" multiple accept=".mp4,.mov,.mkv,.avi,.webm">
+  </div>
+
+  <!-- Config -->
+  <div class="card">
+    <div class="card-title">Configurações</div>
+    <div class="controls-row">
+      <div class="field">
+        <label>Idioma</label>
+        <select id="langSelect">
+          <option value="pt">Português</option>
+          <option value="en">English</option>
+          <option value="es">Español</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+          <option value="auto">Detectar automaticamente</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Formato de saída</label>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:4px;">
+          <div class="checkboxes">
+            <label><input type="checkbox" id="chkTxt" checked> .TXT</label>
+            <label><input type="checkbox" id="chkSrt"> .SRT (legenda)</label>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Juntar tudo</label>
+        <label class="merge-check" style="margin-top:6px;">
+          <input type="checkbox" id="chkMerge">
+          Gerar arquivo unificado
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- File list -->
+  <div class="card" id="listCard" style="display:none;">
+    <div class="card-title" id="listTitle">0 vídeos na fila</div>
+    <div class="file-list-header">
+      <span>Arquivo</span><span>Tamanho</span><span>Status</span><span></span>
+    </div>
+    <div id="fileRows">
+      <div class="empty-state" id="emptyMsg">
+        <i class="ti ti-playlist"></i>
+        Nenhum vídeo adicionado
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div id="progressCard" style="display:none;" class="card">
+    <div class="progress-info">
+      <span id="progressText">Preparando...</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Bottom bar -->
+  <div class="bottom-bar">
+    <button class="btn-secondary" onclick="clearAll()" id="btnClear">
+      <i class="ti ti-trash" style="font-size:14px; vertical-align:-1px;"></i> Limpar lista
+    </button>
+    <button class="btn-primary" id="btnStart" disabled onclick="startTranscription()">
+      <i class="ti ti-player-play"></i> Transcrever tudo
+    </button>
+  </div>
+
+</div>
+
+<script>
+const files = [];
+let running = false;
+let mergedTexts = [];
+
+// --- Server check ---
+async function checkServer() {
+  const url = document.getElementById("serverUrl").value.trim().replace(/\/$/, "");
+  const hint = document.getElementById("serverHint");
+  if (!url) { hint.textContent = "⚠ Cole a URL do Render primeiro."; return; }
+  hint.innerHTML = '<i class="ti ti-loader pulse"></i> Testando conexão...';
+  hint.className = "server-url-hint";
+  try {
+    const r = await fetch(url + "/health", { signal: AbortSignal.timeout(10000) });
+    const data = await r.json();
+    hint.innerHTML = `<i class="ti ti-circle-check"></i> Conectado! Modelo: ${data.model}`;
+    hint.className = "server-url-hint connected";
+  } catch (e) {
+    hint.innerHTML = `<i class="ti ti-alert-circle"></i> Não foi possível conectar. Verifique a URL ou aguarde o servidor acordar.`;
+    hint.className = "server-url-hint";
+  }
+}
+
+// --- File handling ---
+document.getElementById("fileInput").addEventListener("change", e => {
+  addFiles(Array.from(e.target.files));
+  e.target.value = "";
+});
+
+const dz = document.getElementById("dropZone");
+dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("dragover"); });
+dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
+dz.addEventListener("drop", e => {
+  e.preventDefault();
+  dz.classList.remove("dragover");
+  const valid = Array.from(e.dataTransfer.files).filter(f => /\.(mp4|mov|mkv|avi|webm)$/i.test(f.name));
+  addFiles(valid);
+});
+
+function addFiles(newFiles) {
+  newFiles.forEach(f => {
+    if (!files.find(x => x.file.name === f.name)) {
+      files.push({ file: f, status: "waiting", result: null, error: null });
+    }
+  });
+  renderList();
+}
+
+function removeFile(i) {
+  if (running) return;
+  files.splice(i, 1);
+  renderList();
+}
+
+function clearAll() {
+  if (running) return;
+  files.length = 0;
+  renderList();
+  document.getElementById("progressCard").style.display = "none";
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB";
+  return (bytes / 1048576).toFixed(1) + " MB";
+}
+
+function renderList() {
+  const listCard = document.getElementById("listCard");
+  const rows = document.getElementById("fileRows");
+  const title = document.getElementById("listTitle");
+  const btn = document.getElementById("btnStart");
+
+  if (files.length === 0) {
+    listCard.style.display = "none";
+    btn.disabled = true;
+    return;
+  }
+
+  listCard.style.display = "";
+  btn.disabled = running;
+  title.textContent = files.length + (files.length === 1 ? " vídeo na fila" : " vídeos na fila");
+
+  rows.innerHTML = "";
+  files.forEach((item, i) => {
+    const ext = item.file.name.split(".").pop().toUpperCase();
+    const iconMap = { MP4:"ti-file-type-mp4", MOV:"ti-video", MKV:"ti-video", AVI:"ti-video", WEBM:"ti-video" };
+    const icon = iconMap[ext] || "ti-file";
+
+    const badgeMap = {
+      waiting:      `<span class="badge badge-waiting"><i class="ti ti-clock" style="font-size:10px"></i> Aguardando</span>`,
+      uploading:    `<span class="badge badge-uploading pulse"><i class="ti ti-upload" style="font-size:10px"></i> Enviando</span>`,
+      transcribing: `<span class="badge badge-transcribing pulse"><i class="ti ti-wave-sine" style="font-size:10px"></i> Transcrevendo</span>`,
+      done:         `<span class="badge badge-done"><i class="ti ti-check" style="font-size:10px"></i> Finalizado</span>`,
+      error:        `<span class="badge badge-error" title="${item.error || ''}"><i class="ti ti-alert-circle" style="font-size:10px"></i> Erro</span>`,
+    };
+
+    const row = document.createElement("div");
+    row.className = "file-row";
+    row.innerHTML = `
+      <div class="file-name-cell">
+        <i class="ti ${icon}"></i>
+        <span title="${item.file.name}">${item.file.name}</span>
+      </div>
+      <div class="file-size-cell">${formatSize(item.file.size)}</div>
+      <div>${badgeMap[item.status] || ""}</div>
+      <div>
+        <button class="btn-remove" onclick="removeFile(${i})" ${running ? "disabled" : ""} title="Remover">
+          <i class="ti ti-x"></i>
+        </button>
+      </div>
+    `;
+    rows.appendChild(row);
+  });
+}
+
+// --- Transcription ---
+async function startTranscription() {
+  const serverUrl = document.getElementById("serverUrl").value.trim().replace(/\/$/, "");
+  if (!serverUrl) {
+    alert("Por favor, informe a URL do servidor Render antes de transcrever.");
+    return;
+  }
+  if (files.length === 0 || running) return;
+
+  running = true;
+  mergedTexts = [];
+  const lang = document.getElementById("langSelect").value;
+  const srt = document.getElementById("chkSrt").checked;
+  const merge = document.getElementById("chkMerge").checked;
+
+  document.getElementById("progressCard").style.display = "";
+  document.getElementById("btnStart").disabled = true;
+
+  files.forEach(f => f.status = "waiting");
+  renderList();
+
+  let done = 0;
+
+  for (let i = 0; i < files.length; i++) {
+    const item = files[i];
+    const pct = Math.round((i / files.length) * 100);
+
+    document.getElementById("progressFill").style.width = pct + "%";
+    document.getElementById("progressPct").textContent = pct + "%";
+    document.getElementById("progressText").textContent =
+      `Transcrevendo ${i + 1} de ${files.length}: ${item.file.name}`;
+
+    item.status = "uploading";
+    renderList();
+
+    try {
+      const formData = new FormData();
+      formData.append("file", item.file);
+      formData.append("language", lang);
+      formData.append("srt", srt ? "true" : "false");
+
+      item.status = "transcribing";
+      renderList();
+
+      const response = await fetch(serverUrl + "/transcribe", {
+        method: "POST",
+        body: formData,
+        signal: AbortSignal.timeout(600000)
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ error: "Erro desconhecido" }));
+        throw new Error(err.error || "Falha no servidor");
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = item.file.name.replace(/\.[^.]+$/, "") + "_transcricao.zip";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      item.status = "done";
+      done++;
+    } catch (e) {
+      item.status = "error";
+      item.error = e.message;
+      console.error(e);
+    }
+    renderList();
+  }
+
+  document.getElementById("progressFill").style.width = "100%";
+  document.getElementById("progressPct").textContent = "100%";
+  document.getElementById("progressText").textContent =
+    `Concluído! ${done} de ${files.length} transcritos com sucesso.`;
+
+  running = false;
+  document.getElementById("btnStart").disabled = files.length === 0;
+  renderList();
+}
+</script>
+</body>
+</html>
