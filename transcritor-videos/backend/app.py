@@ -7,6 +7,7 @@ from pathlib import Path
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 import whisper
+import imageio_ffmpeg
 
 app = Flask(__name__)
 CORS(app)
@@ -23,8 +24,9 @@ ALLOWED_EXTENSIONS = {".mp4", ".mov", ".mkv", ".avi", ".webm"}
 
 def extract_audio(video_path: str, audio_path: str) -> bool:
     try:
+        ffmpeg_bin = imageio_ffmpeg.get_ffmpeg_exe()
         result = subprocess.run(
-            ["ffmpeg", "-y", "-i", video_path, "-vn", "-ar", "16000",
+            [ffmpeg_bin, "-y", "-i", video_path, "-vn", "-ar", "16000",
              "-ac", "1", "-f", "wav", audio_path],
             capture_output=True, timeout=300
         )
