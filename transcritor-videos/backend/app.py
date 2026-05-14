@@ -12,7 +12,7 @@ app = Flask(__name__)
 CORS(app)
 
 UPLOAD_FOLDER = tempfile.gettempdir()
-MODEL_NAME = os.environ.get("WHISPER_MODEL", "small")
+MODEL_NAME = os.environ.get("WHISPER_MODEL", "tiny")
 
 print(f"Carregando modelo Whisper '{MODEL_NAME}'...")
 model = whisper.load_model(MODEL_NAME)
